@@ -1,0 +1,16 @@
+#!/bin/bash
+
+dat='usd-jpy-history.xml'
+parsrcmd="${HOME}/bin/Parsrs/parsrx.sh"
+headxpath='/div/table/thead/tr/th '
+bodyxpath='/div/table/tbody/tr/td/@data-real-value '
+
+#header=$(cat ${dat} | ${parsrcmd} | grep "${headxpath}" | awk '{print $2}')
+ticker=$(cat ${dat} | ${parsrcmd} | grep "${bodyxpath}" | awk '{print $2}')
+
+echo 'date,close,open,high,low'
+echo "${ticker}" | awk 'ORS = NR%5 ? "," : "\n"' | sort | while read line
+do
+    echo ${line} | awk -F ',' '{print $1}' | xargs -I{} date --date '@'{} '+%Y-%m-%d' | tr '\n' ','
+    echo ${line} | awk -F ',' '{print $2 "," $3 "," $4 "," $5}'
+done
