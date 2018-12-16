@@ -1,25 +1,16 @@
 #!/bin/bash
 
-# curr_id
-# EUR/USD: 1
-# GBP/USD: 2      (GBP=イギリスポンド)
-# USD/JPY: 3
-# EUR/JPY: 9
-# CHF/JPY: 13     (CHF=スイスフラン)
-# AUD/JPY: 49     (AUD=オーストラリアドル)
-# BRL/JPY: 1513   (BRL=ブラジルレアル)
-
 here=$(dirname $(readlink -f $0))
 myself=$(basename $0)
 
 declare -A currencies
 currencies['EUR/USD']=1
-currencies['GBP/USD']=2
+currencies['GBP/USD']=2       ### (GBP=イギリスポンド)
 currencies['USD/JPY']=3
 currencies['EUR/JPY']=9
-currencies['CHF/JPY']=13
-currencies['AUD/JPY']=49
-currencies['BRL/JPY']=1513
+currencies['CHF/JPY']=13      ### (CHF=スイスフラン)
+currencies['AUD/JPY']=49      ### (AUD=オーストラリアドル)
+currencies['BRL/JPY']=1513    ### (BRL=ブラジルレアル)
 
 function urlEnc() {
     if [ -p /dev/stdin ];
@@ -122,6 +113,8 @@ addParam 'st_date'
 addParam 'end_date'
 addParam 'interval_sec'
 
-echo $params
-#curl -s ${url} -H "${content}" -H "${referer}" -H "${accept}" -H "${useragent}" -H "${origin}" -H "${reqtype}" \
-#    --data "${params}"
+#echo $params
+curl -s ${url} \
+    -H "${content}" -H "${referer}" -H "${accept}" \
+    -H "${useragent}" -H "${origin}" -H "${reqtype}" \
+    --data "${params}"
