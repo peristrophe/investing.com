@@ -110,10 +110,10 @@ if __name__ == '__main__':
                  description='Listing up the active/inactive users from treasure-data'
              )
 
-    parser.add_argument('-p', '--pair', type=str, default='USD/JPY', help='print progress log.')
+    parser.add_argument('-p', '--pair', type=str, default='USD/JPY', help='currencies rate label.')
     parser.add_argument('-u', '--tick-unit', type=str, choices=['Daily', 'Weekly', 'Monthly'], default='Daily', help='unit of ticker.')
-    parser.add_argument('-b', '--begin-date', default=DEFAULT_ST_DATE, help='number of entries per api request.')
-    parser.add_argument('-e', '--end-date', default=DEFAULT_END_DATE, help='max entries that api requests.')
+    parser.add_argument('-b', '--begin-date', default=DEFAULT_ST_DATE, help='begin date of history.')
+    parser.add_argument('-e', '--end-date', default=DEFAULT_END_DATE, help='end date of history.')
     args = parser.parse_args()
 
     ticks = inspect_html(fetch_historical_data2(args.pair, args.begin_date, args.end_date, args.tick_unit))
