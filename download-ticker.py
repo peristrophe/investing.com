@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
 __all__ = [
+    'fetch',
+    'inspect',
 ]
 
 import requests
@@ -47,13 +49,13 @@ payload = {
     'interval_sec': INTERVAL.D,
 }
 
-### this function does not get the results i expected. why ...
-def fetch_historical_data1():
-    res = requests.get(url, headers=headers, params=payload, allow_redirects=False)
-    res.raise_for_status()
-    return res.text
+### this function does not get the results i expected. why...
+#def fetch():
+#    res = requests.get(url, headers=headers, params=payload, allow_redirects=False)
+#    res.raise_for_status()
+#    return res.text
 
-def fetch_historical_data2(pair, st_date=None, end_date=None, interval_sec=INTERVAL.D):
+def fetch(pair, st_date=None, end_date=None, interval_sec=INTERVAL.D):
     if st_date is None:
         st_date = DEFAULT_ST_DATE
 
@@ -89,7 +91,7 @@ def fetch_historical_data2(pair, st_date=None, end_date=None, interval_sec=INTER
 
     return res.decode()
 
-def inspect_html(html):
+def inspect(html):
     tree = lxml.html.fragment_fromstring(html)
     trlist = tree.xpath('/html/body/div/table/tbody/tr')
     
@@ -102,8 +104,9 @@ def inspect_html(html):
 
 if __name__ == '__main__':
     import os
+    import sys
+    import csv
     import argparse
-    from pprint import pprint
 
     parser = argparse.ArgumentParser(
                  prog=os.path.basename(__file__),
@@ -116,5 +119,7 @@ if __name__ == '__main__':
     parser.add_argument('-e', '--end-date', default=DEFAULT_END_DATE, help='end date of history.')
     args = parser.parse_args()
 
-    ticks = inspect_html(fetch_historical_data2(args.pair, args.begin_date, args.end_date, args.tick_unit))
-    pprint(ticks)
+    ticks = inspect(fetch(args.pair, args.begin_date, args.end_date, args.tick_unit))
+    writer = csv.writer(sys.stdout)
+    writer.writerow(['unixtime', 'close', 'open', 'high', 'low'])
+    writer.writerows(ticks)
