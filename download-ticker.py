@@ -5,16 +5,20 @@ __all__ = [
     'inspect',
 ]
 
+import os
+import re
 import requests
 import subprocess
 import lxml.html
 
 from collections import namedtuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
-FETCH_PRG = 'download-coded.zsh'
+HERE = os.path.dirname(os.path.abspath(__file__))
+FETCH_PRG = os.path.join(HERE, 'download-coded.zsh')
 
-DEFAULT_END_DATE = datetime.now()
+jst = timezone(timedelta(hours=9), 'JST')
+DEFAULT_END_DATE = datetime.now(jst)
 DEFAULT_ST_DATE = DEFAULT_END_DATE.replace(year=DEFAULT_END_DATE.year-5)
 
 PAIR = {
@@ -55,21 +59,15 @@ payload = {
 #    res.raise_for_status()
 #    return res.text
 
-def fetch(pair, st_date=None, end_date=None, interval_sec=INTERVAL.D):
-    if st_date is None:
-        st_date = DEFAULT_ST_DATE
+def fetch():
+    pair = next(filter(lambda x: x[1] == payload.get('curr_id'), PAIR.items()))[0]
+    st_date = payload.get('st_date')
+    end_date = payload.get('end_date')
+    interval_sec = payload.get('interval_sec')
 
-    if end_date is None:
-        end_date = DEFAULT_END_DATE
-
-    if not isinstance(st_date, datetime):
-        raise ValueError('invalid argument. st_date is not datetime object.')
-
-    if not isinstance(end_date, datetime):
-        raise ValueError('invalid argument. end_date is not datetime object.')
-
-    if pair not in PAIR.keys():
-        raise ValueError('invalid argument {} as pair. please specify one of the following.\n{}'.format(pair, ', '.join(PAIR.keys())))
+    assert re.search('^\d{4}/\d{2}/\d{2}$', st_date) is not None, 'st_date: {}'.format(st_date)
+    assert re.search('^\d{4}/\d{2}/\d{2}$', end_date) is not None, 'end_date: {}'.format(end_date)
+    assert pair in PAIR.keys(), 'pair: {}'.format(pair)
 
     cmdline = [
         '/usr/bin/env',
@@ -78,14 +76,15 @@ def fetch(pair, st_date=None, end_date=None, interval_sec=INTERVAL.D):
     ]
 
     cmdline.extend(['-p', pair])
-    cmdline.extend(['-b', st_date.strftime('%Y/%m/%d')])
-    cmdline.extend(['-e', end_date.strftime('%Y/%m/%d')])
+    cmdline.extend(['-b', st_date])
+    cmdline.extend(['-e', end_date])
     try:
         interval_opt = next(filter(lambda x: x[1] == interval_sec, INTERVAL._asdict().items()))
         cmdline.append('-{}'.format(interval_opt[0].lower()))
     except StopIteration:
         pass
 
+    print('RUNNING COMMAND: {}'.format(' '.join(cmdline)))
     with subprocess.Popen(cmdline, stdout=subprocess.PIPE) as proc:
         res = proc.stdout.read()
 
@@ -103,7 +102,6 @@ def inspect(html):
     return ticker[:-1]
 
 if __name__ == '__main__':
-    import os
     import sys
     import csv
     import argparse
@@ -113,13 +111,28 @@ if __name__ == '__main__':
                  description='Listing up the active/inactive users from treasure-data'
              )
 
+    unit_types = [
+        INTERVAL.D,
+        INTERVAL.W,
+        INTERVAL.M,
+    ]
+
     parser.add_argument('-p', '--pair', type=str, default='USD/JPY', help='currencies rate label.')
-    parser.add_argument('-u', '--tick-unit', type=str, choices=['Daily', 'Weekly', 'Monthly'], default='Daily', help='unit of ticker.')
-    parser.add_argument('-b', '--begin-date', default=DEFAULT_ST_DATE, help='begin date of history.')
-    parser.add_argument('-e', '--end-date', default=DEFAULT_END_DATE, help='end date of history.')
+    parser.add_argument('-u', '--tick-unit', type=str, choices=unit_types, default=unit_types[0], help='unit of ticker.')
+    parser.add_argument('-b', '--begin-date', type=str, default=DEFAULT_ST_DATE.strftime('%Y/%m/%d'), help='begin date of history. format YYYY/MM/DD.')
+    parser.add_argument('-e', '--end-date', type=str, default=DEFAULT_END_DATE.strftime('%Y/%m/%d'), help='end date of history. format YYYY/MM/DD.')
+    parser.add_argument('-i', '--iso-date', action='store_true', default=False, help='transform unixtime to iso format.')
     args = parser.parse_args()
 
-    ticks = inspect(fetch(args.pair, args.begin_date, args.end_date, args.tick_unit))
+    payload['curr_id'] = PAIR.get(args.pair, payload.get('curr_id'))
+    payload['st_date'] = args.begin_date
+    payload['end_date'] = args.end_date
+    payload['interval_sec'] = args.tick_unit
+
+    ticks = inspect(fetch())
+    if args.iso_date:
+        ticks = list(map(lambda x: [ datetime.fromtimestamp(int(v)).isoformat() if i == 0 else v for i, v in enumerate(x) ], ticks))
+
     writer = csv.writer(sys.stdout)
-    writer.writerow(['unixtime', 'close', 'open', 'high', 'low'])
+    writer.writerow(['date', 'close', 'open', 'high', 'low'])
     writer.writerows(ticks)
